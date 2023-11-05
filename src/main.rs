@@ -94,6 +94,40 @@ async fn read_task(app_state: web::Data<AppState>, id: web::Path<u64>) -> impl R
         None => return HttpResponse::NotFound().body("Task not found"),
     }
 }
+async fn delete_task(app_state: web::Data<AppState>, id: web::Path<u64>) -> impl Responder {
+    let mut db = app_state.db.lock().expect("Fail to lock DB");
+    db.delete(id.into_inner());
+    let _ = db.save_to_file();
+    HttpResponse::Ok().body("Task deleted")
+}
+async fn update_task(app_state: web::Data<AppState>, task: web::Json<Task>) -> impl Responder {
+    let mut db = app_state.db.lock().expect("Fail to lock DB");
+    db.insert(task.into_inner());
+    let _ = db.save_to_file();
+    HttpResponse::Ok().body("Task updated")
+}
+async fn read_all_task(app_state: web::Data<AppState>) -> impl Responder {
+    let mut db = app_state.db.lock().expect("Fail to lock DB");
+    let tasks = db.getAll();
+    HttpResponse::Ok().json(tasks)
+}
+
+async fn register_user(app_state: web::Data<AppState>, user: web::Json<User>) -> impl Responder {
+    let mut db: std::sync::MutexGuard<'_, Database> = app_state.db.lock().expect("Fail to lock DB");
+    db.insert_user(user.into_inner());
+    let _ = db.save_to_file();
+    HttpResponse::Ok().finish()
+}
+
+async fn login(app_state: web::Data<AppState>, user: web::Json<User>) -> impl Responder {
+    let mut db: std::sync::MutexGuard<'_, Database> = app_state.db.lock().expect("Fail to lock DB");
+    match db.get_user_by_name(&user.username) {
+        Some(stored_user) if stored_user.password == user.password => {
+            HttpResponse::Ok().body("Login success")
+        }
+        _ => HttpResponse::BadRequest().body("User not found"),
+    }
+}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -117,6 +151,12 @@ async fn main() -> std::io::Result<()> {
             .app_data(data.clone())
             .route("/task", web::post().to(create_task))
             .route("/task/{id}", web::get().to(read_task))
+            .route("/tasks", web::get().to(read_all_task))
+            .route("/task", web::patch().to(update_task))
+            .route("/task/{id}", web::delete().to(delete_task))
+            .route("/task", web::put().to(update_task))
+            .route("/register", web::post().to(register_user))
+            .route("/login", web::post().to(login))
     })
     .bind(("127.0.0.1", 8080))?
     .run()

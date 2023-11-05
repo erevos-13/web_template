@@ -1,6 +1,1 @@
-{
-  "tasks": {
-    "65151": { "id": 65151, "name": "take the names", "completed": false }
-  },
-  "users": {}
-}
+{"tasks":{"65151":{"id":65151,"name":"take the names","completed":false}},"users":{"1":{"id":1,"username":"orfeas","password":"Admin"}}}
